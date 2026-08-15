@@ -45,4 +45,4 @@ if archivo:
     elif dist_m < 121:
         st.warning("⚠️ Demasiado cerca (Mínimo 121m)")
     else:
-        st.error("❌ Fuera de alcance (Máximo 700m)")
+        st.error("❌ Fuera de alcance (Máximo

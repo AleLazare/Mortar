@@ -1,55 +1,36 @@
-import streamlit as st
 import cv2
 import numpy as np
 import math
-from PIL import Image
 
-# Configuración de tamaños de mapa en metros
-MAPAS_PUBG = {
-    "Erangel (8x8 km)": 8000,
-    "Miramar (8x8 km)": 8000,
-    "Taego (8x8 km)": 8000,
-    "Rondo (8x8 km)": 8000,
-    "Sanhok (4x4 km)": 4000,
-    "Vikar (6x6 km)": 6000,
-    "Karakin (2x2 km)": 2000,
-    "Paramo (3x3 km)": 3000
-}
+# Cargar la captura de pantalla del mapa
+img = cv2.imread('mapa_pubg.png')
+hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-st.title("🎯 Calculadora de Mortero PUBG")
+# Ejemplo: Definir rango HSV para detectar la marca amarilla (Punto B)
+yellow_lower = np.array([20, 100, 100])
+yellow_upper = np.array([30, 255, 255])
 
-mapa_seleccionado = st.selectbox("Selecciona el mapa:", list(MAPAS_PUBG.keys()))
-tamano_mapa_m = MAPAS_PUBG[mapa_seleccionado]
+mask_yellow = cv2.inRange(hsv, yellow_lower, yellow_upper)
+contours, _ = cv2.findContours(mask_yellow, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-archivo = st.file_uploader("Sube una captura del mapa completo (M):", type=["png", "jpg", "jpeg"])
+if contours:
+    # Obtener el centroide del contorno más grande encontrado
+    c = max(contours, key=cv2.contourArea)
+    M = cv2.moments(c)
+    if M["m00"] != 0:
+        bx = int(M["m10"] / M["m00"])
+        by = int(M["m01"] / M["m00"])
+        print(f"Punto B (Marca amarilla): ({bx}, {by})")
 
-if archivo is not None:
-    # Cargar imagen
-    image = Image.open(archivo)
-    img_array = np.array(image)
-    
-    st.image(image, caption="Mapa cargado", use_container_width=True)
-    
-    st.info("Ingresa la posición en píxeles o detecta mediante colores:")
-    
-    # Simulación de cálculo por coordenadas seleccionadas
-    col1, col2 = st.columns(2)
-    with col1:
-        x1 = st.number_input("Jugador X (px)", value=int(img_array.shape[1] / 2))
-        y1 = st.number_input("Jugador Y (px)", value=int(img_array.shape[0] / 2))
-    with col2:
-        x2 = st.number_input("Objetivo X (px)", value=int(img_array.shape[1] / 2) + 100)
-        y2 = st.number_input("Objetivo Y (px)", value=int(img_array.shape[0] / 2) + 100)
-        
-    dist_px = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-    metros_por_px = tamano_mapa_m / img_array.shape[1]
-    dist_m = dist_px * metros_por_px
-    
-    st.subheader(f"Distancia estimada: **{round(dist_m, 1)} metros**")
-    
-    if 121 <= dist_m <= 700:
-        st.success("✅ EN RANGO DE MORTERO (121m - 700m)")
-    elif dist_m < 121:
-        st.warning("⚠️ Demasiado cerca (Mínimo 121m)")
-    else:
-        st.error("❌ Fuera de alcance (Máximo 700m)")
+# Supongamos que la posición del jugador A ya fue detectada en (ax, ay)
+ax, ay = 500, 400 
+bx, by = 650, 520
+
+# Relación de píxeles a metros en el mapa actual
+m_per_pixel = 1.5 
+
+# Cálculo de la distancia
+dist_px = math.sqrt((bx - ax)**2 + (by - ay)**2)
+dist_metros = dist_px * m_per_pixel
+
+print(f"Distancia para mortero: {round(dist_metros)} metros")
